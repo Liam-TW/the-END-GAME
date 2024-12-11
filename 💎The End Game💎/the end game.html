@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> 💎The END GAME💎 </title>
+        <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-image: url("images/背景.jpg");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center center;
+            color: #fff;
+            margin: 0;
+        }
+        h1 { margin: 20px 0; }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        .container { display: flex; justify-content: center; margin: 20px; }
+        .monster {
+            width: 200px; height: 200px; object-fit: contain;
+            background-color: black; border: 2px solid #fff;
+        }
+        .status-bar {
+            display: inline-block;
+            width: 60%;
+            background: #444;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            vertical-align: middle; /* 垂直對齊 */
+        }
+
+        .health {
+            height: 100%;
+            background-color: #4caf50;
+            transition: width 0.2s;
+        }
+        button { margin: 10px; padding: 10px 20px; font-size: 1em; cursor: pointer; }
+        #log { background-color: #333; padding: 10px; border-radius: 10px; max-height: 200px; overflow-y: auto; }
+        #heroList { display: flex; justify-content: center; flex-wrap: wrap; margin: 10px auto; }
+        .hero-card { margin: 10px; text-align: center; color: #f4f4f4; }
+        .hero-card img { width: 150px; height: 150px; }
+        #restartBtn { display: none; margin-top: 20px; padding: 10px 20px; font-size: 1.2em; background-color: #ff5733; color: #fff; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>💎 The END GAME 💎</h1>
+        <audio id="bgm" autoplay loop>
+        <source src="audio/Alan Silvestri - Portals (From  Avengers_ Endgame _Audio Only).mp3" type="audio/mp3">
+        您的瀏覽器不支援音樂播放。
+    </audio>
+
+    <button onclick="playBGM()">播放音樂</button>
+    <button onclick="pauseBGM()">暫停音樂</button><br>
+
+    <img src="images/博士.png" alt="博士" class="banner"><br>
+    <h2>" Try to Find your 1/14,000,605 💫"</h2>
+    <div>玩家血量：
+        <div class="status-bar">
+            <div id="playerHpBar" class="health"></div>
+        </div>
+        <span id="playerHpValue">200/200</span>
+    </div>
+    <div>怪獸血量：
+        <div class="status-bar">
+            <div id="monsterHpBar" class="health"></div>
+        </div>
+        <span id="monsterHpValue">50/50</span>
+    </div>
+    <div>目前怪獸: <span id="currentMonsterName">黑矮星</span></div>
+    <div id="heroList">已招募英雄: 無</div>
+
+    <div class="container">
+        <img src="" id="monsterImage" class="monster" alt="怪獸">
+    </div>
+
+    <button id="recruitBtn" onclick="recruitHero()">招募英雄</button>
+    <button id="attackBtn" onclick="attackMonster()">攻擊怪獸</button>
+    <div id="log"></div>
+    <button id="restartBtn" onclick="restartGame()">好好玩 再玩一次</button>
+
+    <script>
+        const bgm = document.getElementById("bgm");
+
+        function playBGM() {
+            bgm.play();
+        }
+
+        function pauseBGM() {
+            bgm.pause();
+        }
+
+        let playerHp, monsterHp, currentLevel, playerMaxHp, monsterMaxHp, heroes;
+        let spidermanDodge = 0; // 蜘蛛人的閃躲次數
+        let round = 1; // 新增回合數
+
+        const monsters = [
+            { name: "黑矮星", image: "images/黑矮星.jpg", maxHp: 50 },
+            { name: "烏木喉", image: "images/烏木喉.jpg", maxHp: 100 },
+            { name: "超巨星", image: "images/超巨星.jpg", maxHp: 150 },
+            { name: "暗夜比鄰星", image: "images/暗夜比鄰星.jpg", maxHp: 200 },
+            { name: "薩諾斯", image: "images/薩諾斯.jpg", maxHp: 300 }
+        ];
+
+        const heroPool = [
+            { name: "傳奇英雄：驚奇隊長", rarity: "傳奇", attack: 50, image: "images/驚奇隊長.png", probability: 0.1, skill: "finalBoss" },
+            { name: "史詩英雄：鋼鐵人", rarity: "史詩", attack: 30, image: "images/鋼鐵人.png", probability: 0.2, skill: "reduceDamage" },
+            { name: "稀有英雄：蜘蛛人", rarity: "稀有", attack: 20, image: "images/蜘蛛人.png", probability: 0.3, skill: "dodge" },
+            { name: "普通英雄：鷹眼", rarity: "普通", attack: 10, image: "images/鷹眼.png", probability: 0.4, skill: "heal" }
+        ];
+
+        function initializeGame() {
+            playerHp = 200;
+            playerMaxHp = 200;
+            currentLevel = 0;
+            heroes = [];
+            spidermanDodge = 0;
+            round = 1; // 初始化回合數
+            startLevel();
+            document.getElementById("recruitBtn").disabled = false;
+            document.getElementById("attackBtn").disabled = false;
+            document.getElementById("restartBtn").style.display = "none";
+            document.getElementById("log").innerHTML = "";
+            document.getElementById("heroList").innerHTML = "";
+            updateHealthBars();
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById("log");
+            logDiv.innerHTML += `<p>【第 ${round} 回合】${message}</p>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function startLevel() {
+            const monster = monsters[currentLevel];
+            monsterHp = monster.maxHp;
+            monsterMaxHp = monster.maxHp;
+
+            document.getElementById("monsterImage").src = monster.image;
+            document.getElementById("currentMonsterName").innerText = monster.name;
+            log(`⚔️ 挑戰 ${monster.name} 開始！`);
+            updateHealthBars();
+        }
+
+        function updateHealthBars() {
+            const playerHpPercentage = (playerHp / playerMaxHp) * 100;
+            const monsterHpPercentage = (monsterHp / monsterMaxHp) * 100;
+
+            // 更新血條寬度
+            document.getElementById("playerHpBar").style.width = playerHpPercentage + "%";
+            document.getElementById("monsterHpBar").style.width = monsterHpPercentage + "%";
+
+            // 更新血量數值
+            document.getElementById("playerHpValue").innerText = `${playerHp}/${playerMaxHp}`;
+            document.getElementById("monsterHpValue").innerText = `${Math.max(monsterHp, 0)}/${monsterMaxHp}`;
+        }
+
+        function recruitHero() {
+            let rand = Math.random();
+            let cumulativeProbability = 0;
+
+            for (const hero of heroPool) {
+                if (heroes.some(h => h.name === hero.name)) continue;
+
+                cumulativeProbability += hero.probability;
+                if (rand <= cumulativeProbability) {
+                    heroes.push(hero);
+                    applyHeroSkill(hero);
+                    log(`🎉 招募到 ${hero.rarity} - ${hero.name}！攻擊力：${hero.attack}`);
+                    renderHeroList();
+                    monsterAttack();
+                    round++; // 回合數增加
+                    return;
+                }
+            }
+
+            log("⚠️ 英雄未響應徵招，請再試一次！");
+            monsterAttack();
+            round++; // 回合數增加
+        }
+
+        function applyHeroSkill(hero) {
+            if (hero.skill === "heal") log("🩹 鷹眼技能觸發：每次攻擊時回復 20 血量！");
+            if (hero.skill === "dodge") {
+                spidermanDodge = 2;
+                log("🕷️ 蜘蛛人技能觸發：獲得 2 次閃躲傷害機會！");
+            }
+            if (hero.skill === "reduceDamage") log("🛡️ 鋼鐵人技能觸發：所有傷害減少 20%！");
+            if (hero.skill === "finalBoss") {
+                log("🚀 驚奇隊長技能觸發：直接進入最終關卡薩諾斯！");
+                currentLevel = monsters.length - 1;
+                startLevel();
+            }
+        }
+
+        function attackMonster() {
+            const totalAttack = heroes.reduce((sum, hero) => sum + hero.attack, 0);
+
+            if (totalAttack === 0) {
+                log("⚠️ 尚未招募英雄，無法攻擊！");
+                monsterAttack();
+                return;
+            }
+
+            monsterHp -= totalAttack;
+            updateHealthBars(); // 立即更新血量條
+            log(`🗡️ 英雄總攻擊力 ${totalAttack}，怪獸剩餘血量：${Math.max(monsterHp, 0)}/${monsterMaxHp}`);
+
+            // 鷹眼技能：回血，限制血量不超過最大值
+            if (heroes.some(hero => hero.skill === "heal")) {
+                playerHp = Math.min(playerHp + 20, playerMaxHp);
+                log("🩹 鷹眼技能觸發：回復 20 血量！");
+                updateHealthBars();
+            }
+
+            if (monsterHp <= 0) {
+                log(`🎊 成功擊敗 ${monsters[currentLevel].name}！`);
+                nextLevel();
+            } else {
+                monsterAttack();
+            }
+            round++; // 回合數增加
+        }
+
+        function monsterAttack() {
+            if (spidermanDodge > 0) {
+                spidermanDodge--;
+                log(`🕷️ 蜘蛛人技能觸發：成功閃躲傷害！剩餘閃躲次數：${spidermanDodge}`);
+                return;
+            }
+
+            let damage = 40 + currentLevel * 5;
+
+            if (heroes.some(hero => hero.skill === "reduceDamage")) {
+                damage = Math.floor(damage * 0.8);
+                log(`🛡️ 鋼鐵人技能觸發：傷害減少至 ${damage}`);
+            }
+
+            playerHp -= damage;
+
+            // 確保玩家血量不低於 0
+            if (playerHp < 0) playerHp = 0;
+
+            updateHealthBars(); // 更新血條
+            log(`⚔️ ${monsters[currentLevel].name} 攻擊！玩家受到 ${damage} 傷害，剩餘血量：${playerHp}/${playerMaxHp}`);
+
+            if (playerHp <= 0) {
+                updateHealthBars(); // 確保血量條為零
+                log("💀 玩家血量歸零，遊戲結束！");
+                endGame();
+            }
+        }
+
+        function nextLevel() {
+            currentLevel++;
+            if (currentLevel >= monsters.length) {
+                log("🏆 恭喜通關！擊敗所有怪獸！");
+                endGame();
+                return;
+            }
+            startLevel();
+        }
+
+        function endGame() {
+            document.getElementById("recruitBtn").disabled = true;
+            document.getElementById("attackBtn").disabled = true;
+            document.getElementById("restartBtn").style.display = "inline-block";
+        }
+
+        function restartGame() {
+            initializeGame();
+            log("🔄 遊戲開始！");
+        }
+
+        function renderHeroList() {
+            const heroList = document.getElementById("heroList");
+            heroList.innerHTML = heroes.map(hero => `
+                <div class="hero-card">
+                    <img src="${hero.image}" alt="${hero.name}">
+                    <p>${hero.name} (${hero.attack})</p>
+                </div>
+            `).join("");
+        }
+
+        initializeGame();
+    </script>
+
+</body>
+</html>
